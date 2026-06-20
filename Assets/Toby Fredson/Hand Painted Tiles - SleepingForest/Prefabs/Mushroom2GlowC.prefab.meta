@@ -1,0 +1,26 @@
+fileFormatVersion: 2
+guid: 1a48cee851dc6fa42bd9f79c60aaaade
+labels:
+- 2d
+- PBR
+- handpainted
+- leaves
+- mushrooms
+- nature
+- paintedtextures
+- stone
+- stylized
+- vegetation
+timeCreated: 1503146401
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: prefabs
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 49170
+  packageName: Painted Tiles - Sleeping Forest
+  packageVersion: 1.1
+  assetPath: Assets/Toby Fredson/Hand Painted Tiles - SleepingForest/Prefabs/Mushroom2GlowC.prefab
+  uploadId: 198574

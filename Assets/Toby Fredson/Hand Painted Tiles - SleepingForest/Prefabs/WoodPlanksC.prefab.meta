@@ -1,0 +1,26 @@
+fileFormatVersion: 2
+guid: c4a51ae42e8897347880260c3f9ef7fc
+labels:
+- 2d
+- PBR
+- handpainted
+- leaves
+- mushrooms
+- nature
+- paintedtextures
+- stone
+- stylized
+- vegetation
+timeCreated: 1503341934
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: prefabs
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 49170
+  packageName: Painted Tiles - Sleeping Forest
+  packageVersion: 1.1
+  assetPath: Assets/Toby Fredson/Hand Painted Tiles - SleepingForest/Prefabs/WoodPlanksC.prefab
+  uploadId: 198574

@@ -1,0 +1,21 @@
+fileFormatVersion: 2
+guid: 83418de5d9bf95a48a6bda7d8f7bfcf7
+labels:
+- PBR
+- handpainted
+- nature
+- paintedtextures
+- scenes
+timeCreated: 1503522153
+licenseType: Store
+DefaultImporter:
+  userData: 
+  assetBundleName: scenes
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 49170
+  packageName: Painted Tiles - Sleeping Forest
+  packageVersion: 1.1
+  assetPath: Assets/Toby Fredson/Hand Painted Tiles - SleepingForest/Scenes/MaterialTest.unity
+  uploadId: 198574

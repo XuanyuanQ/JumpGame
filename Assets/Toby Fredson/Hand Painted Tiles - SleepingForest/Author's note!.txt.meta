@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c9468fd08012154429ec2a3001b58488
+timeCreated: 1504004607
+licenseType: Store
+TextScriptImporter:
+  userData: 
+  assetBundleName: readme
+  assetBundleVariant: readme
+AssetOrigin:
+  serializedVersion: 1
+  productId: 49170
+  packageName: Painted Tiles - Sleeping Forest
+  packageVersion: 1.1
+  assetPath: Assets/Toby Fredson/Hand Painted Tiles - SleepingForest/Author's note!.txt
+  uploadId: 198574

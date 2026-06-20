@@ -1,0 +1,21 @@
+fileFormatVersion: 2
+guid: 2d510c8084eb44d419c99221069a7896
+labels:
+- PBR
+- handpainted
+- nature
+- paintedtextures
+- scenes
+timeCreated: 1499706860
+licenseType: Store
+DefaultImporter:
+  userData: 
+  assetBundleName: scenes
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 49170
+  packageName: Painted Tiles - Sleeping Forest
+  packageVersion: 1.1
+  assetPath: Assets/Toby Fredson/Hand Painted Tiles - SleepingForest/Scenes/MushroomsA.unity
+  uploadId: 198574
