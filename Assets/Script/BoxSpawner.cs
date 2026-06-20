@@ -41,13 +41,15 @@ public class BoxSpawner : MonoBehaviour
         platform.name = Random.value < cylinderChance ? "CylinderPlatform" : "BoxPlatform";
 
         Renderer renderer = platform.GetComponent<Renderer>();
+        Color platformColor = Random.ColorHSV(
+            0f, 1f,
+            0.75f, 1f,
+            0.85f, 1f
+        );
+
         if (renderer != null)
         {
-            renderer.material.color = Random.ColorHSV(
-                0f, 1f,
-                0.75f, 1f,
-                0.85f, 1f
-            );
+            renderer.material.color = platformColor;
         }
 
         float randomWidth = Random.Range(3f, 8f);
@@ -63,6 +65,7 @@ public class BoxSpawner : MonoBehaviour
             platform.transform.localScale = new Vector3(randomWidth, fixedHeight, randomWidth);
         }
 
+        PlatformRippleMaterial.Prepare(platform, platformColor);
         curBoxPos = newPos;
         return newPos;
     }

@@ -4,6 +4,9 @@ using System.Collections;
 using TMPro;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public class PlayerMoveControl : MonoBehaviour
 {
@@ -19,6 +22,7 @@ public class PlayerMoveControl : MonoBehaviour
     public TextMeshProUGUI scoreText;
 
     private Image hudPanel;
+    private Canvas hudCanvas;
     private TextMeshProUGUI detailText;
     private ParticleSystem.EmissionModule emissionLoop;
     private bool isCharging = false;
@@ -62,6 +66,7 @@ public class PlayerMoveControl : MonoBehaviour
         Canvas canvas = canvasObject.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 100;
+        hudCanvas = canvas;
 
         CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
@@ -136,6 +141,76 @@ public class PlayerMoveControl : MonoBehaviour
         SetHudText($"Score {score}", RuleText, new Color(1f, 0.82f, 0.16f, 1f), new Color(0.02f, 0.025f, 0.035f, 0.82f));
     }
 
+    private void SpawnScorePopup()
+    {
+        ResolveHud();
+
+        Camera mainCamera = Camera.main;
+        Vector3 worldPosition = head != null
+            ? head.transform.position + Vector3.up * 1.0f
+            : player.transform.position + Vector3.up * 2.6f;
+
+        Vector2 anchoredPosition = new Vector2(Screen.width * 0.5f, Screen.height * 0.58f);
+        if (mainCamera != null)
+        {
+            Vector3 screenPosition = mainCamera.WorldToScreenPoint(worldPosition);
+            RectTransform canvasRect = hudCanvas.GetComponent<RectTransform>();
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPosition, null, out anchoredPosition);
+        }
+
+        GameObject popupObject = new GameObject("Score Popup +1");
+        popupObject.transform.SetParent(hudCanvas.transform, false);
+
+        TextMeshProUGUI popup = popupObject.AddComponent<TextMeshProUGUI>();
+        popup.text = "+1";
+        popup.fontSize = 46f;
+        popup.fontStyle = FontStyles.Bold;
+        popup.alignment = TextAlignmentOptions.Center;
+        popup.color = Color.white;
+        popup.raycastTarget = false;
+
+        Shadow shadow = popupObject.AddComponent<Shadow>();
+        shadow.effectColor = new Color(0f, 0f, 0f, 0.55f);
+        shadow.effectDistance = new Vector2(2f, -2f);
+
+        RectTransform rect = popup.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = anchoredPosition;
+        rect.sizeDelta = new Vector2(120f, 70f);
+        rect.localScale = Vector3.one * 0.55f;
+
+        StartCoroutine(ScorePopupRoutine(popupObject, popup, anchoredPosition));
+    }
+
+    private IEnumerator ScorePopupRoutine(GameObject popupObject, TextMeshProUGUI popup, Vector2 startPosition)
+    {
+        float duration = 0.9f;
+        float elapsed = 0f;
+        Vector2 endPosition = startPosition + Vector2.up * 76f;
+        RectTransform rect = popup.GetComponent<RectTransform>();
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            float easedT = 1f - Mathf.Pow(1f - t, 3f);
+
+            rect.anchoredPosition = Vector2.Lerp(startPosition, endPosition, easedT);
+            float scale = Mathf.Lerp(0.55f, 1.0f, Mathf.Sin(t * Mathf.PI));
+            rect.localScale = Vector3.one * scale;
+
+            Color color = popup.color;
+            color.a = Mathf.SmoothStep(1f, 0f, t);
+            popup.color = color;
+
+            yield return null;
+        }
+
+        Destroy(popupObject);
+    }
+
     public Vector3 getPlaerPosition()
     {
         return player.transform.position;
@@ -143,6 +218,12 @@ public class PlayerMoveControl : MonoBehaviour
 
     private void Update()
     {
+        if (Keyboard.current.escapeKey.wasReleasedThisFrame)
+        {
+            QuitGame();
+            return;
+        }
+
         if (Keyboard.current.yKey.wasReleasedThisFrame && !ongoing)
         {
             ResetGame();
@@ -284,6 +365,7 @@ public class PlayerMoveControl : MonoBehaviour
             camScript.UpdateTarget(player.transform.position, newPos, boxSpawner.isFowardFunc());
             score++;
             ShowPlayingText();
+            SpawnScorePopup();
         }
         else if (val == 0)
         {
@@ -301,5 +383,14 @@ public class PlayerMoveControl : MonoBehaviour
     {
         string currentSceneName = SceneManager.GetActiveScene().name;
         SceneManager.LoadScene(currentSceneName);
+    }
+
+    private void QuitGame()
+    {
+#if UNITY_EDITOR
+        EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
     }
 }

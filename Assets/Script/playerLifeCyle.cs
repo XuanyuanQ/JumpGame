@@ -54,6 +54,7 @@ public class playerLifeCyle : MonoBehaviour
             {
                 currentPlatform = collision.gameObject;
                 cur_hit = pos;
+                PlatformRippleMaterial.Trigger(collision.gameObject, pos);
                 Invoke(nameof(DelayedUpdate), 0.15f);
             }
         }
