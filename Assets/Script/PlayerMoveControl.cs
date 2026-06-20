@@ -2,76 +2,167 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections;
 using TMPro;
- using UnityEngine.SceneManagement; // 必须引入命名空间
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class PlayerMoveControl : MonoBehaviour
 {
-    public ParticleSystem chargeParticle; // 拖入你的粒子系统
-    private ParticleSystem.EmissionModule emissionLoop;
-
+    public ParticleSystem chargeParticle;
     public GameObject player;
     public GameObject head;
-    public float flipDuration = 1f; // 旋转速度
-    public float jumpSpeed = 3.0f; // 跳跃距离
-    private bool isCharging = false;
-    private float startTime;     // 记录按下的时刻
-    private float chargeTime;    // 最终按下的时长（蓄力值）
+    public float flipDuration = 1f;
+    public float jumpSpeed = 3.0f;
     public CameraUpdate camScript;
     public BoxSpawner boxSpawner;
     public waterPlaneInfo waterPlaneInfo;
-    private Material playerMaterial;
     public float maxChargeTime = 2.0f;
-    private float head_y = 0;
     public TextMeshProUGUI scoreText;
+
+    private Image hudPanel;
+    private TextMeshProUGUI detailText;
+    private ParticleSystem.EmissionModule emissionLoop;
+    private bool isCharging = false;
+    private float startTime;
+    private float chargeTime;
+    private Material playerMaterial;
+    private float head_y = 0;
     private int score = 0;
     private int maxScore = 0;
     private bool ongoing = true;
 
-    void Start()
+    private const string RuleText =
+        "Hold Space to charge, release to jump.\nLand on the next platform. Press Y to restart after game over.";
+
+    private void Start()
     {
         Rigidbody rb = player.GetComponent<Rigidbody>();
-        // 将重心向下移动（相对于物体中心）
         rb.centerOfMass = new Vector3(0, -1f, 0);
-        // rb.constraints = RigidbodyConstraints.None;
         rb.isKinematic = false;
+
         playerMaterial = player.GetComponent<Renderer>().material;
         emissionLoop = chargeParticle.emission;
-        emissionLoop.enabled = false; // 初始状态关闭
-        scoreText.color = new Color(1f, 0.8f, 0f, 1f);
-        scoreText.text="Score:0";
+        emissionLoop.enabled = false;
+
+        ShowPlayingText();
     }
-    public Vector3 getPlaerPosition()
-        {
-        return player.transform.position;
-        }
-    void Update()
+
+    private void ResolveHud()
     {
-        if (Keyboard.current.yKey.wasReleasedThisFrame & !ongoing)
-        {
-            Debug.Log("新系统：Y 键被按下");
-            ResetGame();
-            Start();
-            waterPlaneInfo.Start();
-            ongoing = true;
-        }
-        else if(!ongoing)
+        if (scoreText != null && detailText != null && hudPanel != null)
         {
             return;
         }
-    
+
+        CreateHud();
+    }
+
+    private void CreateHud()
+    {
+        GameObject canvasObject = new GameObject("Game UI");
+        Canvas canvas = canvasObject.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 100;
+
+        CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+        scaler.scaleFactor = 1f;
+
+        canvasObject.AddComponent<GraphicRaycaster>();
+
+        GameObject panelObject = new GameObject("HUD Panel");
+        panelObject.transform.SetParent(canvasObject.transform, false);
+
+        hudPanel = panelObject.AddComponent<Image>();
+        hudPanel.color = new Color(0.02f, 0.025f, 0.035f, 0.82f);
+        hudPanel.raycastTarget = false;
+
+        RectTransform panelRect = hudPanel.GetComponent<RectTransform>();
+        panelRect.anchorMin = new Vector2(0f, 1f);
+        panelRect.anchorMax = new Vector2(0f, 1f);
+        panelRect.pivot = new Vector2(0f, 1f);
+        panelRect.anchoredPosition = new Vector2(14f, -12f);
+        panelRect.sizeDelta = new Vector2(340f, 116f);
+
+        GameObject textObject = new GameObject("Score Text");
+        textObject.transform.SetParent(panelObject.transform, false);
+
+        scoreText = textObject.AddComponent<TextMeshProUGUI>();
+        scoreText.fontSize = 30;
+        scoreText.fontStyle = FontStyles.Bold;
+        scoreText.enableWordWrapping = false;
+        scoreText.alignment = TextAlignmentOptions.TopLeft;
+        scoreText.raycastTarget = false;
+
+        Shadow scoreShadow = textObject.AddComponent<Shadow>();
+        scoreShadow.effectColor = new Color(0f, 0f, 0f, 0.5f);
+        scoreShadow.effectDistance = new Vector2(1.5f, -1.5f);
+
+        RectTransform scoreRect = scoreText.GetComponent<RectTransform>();
+        scoreRect.anchorMin = new Vector2(0f, 1f);
+        scoreRect.anchorMax = new Vector2(1f, 1f);
+        scoreRect.pivot = new Vector2(0f, 1f);
+        scoreRect.anchoredPosition = new Vector2(16f, -12f);
+        scoreRect.sizeDelta = new Vector2(-32f, 36f);
+
+        GameObject detailObject = new GameObject("Hint Text");
+        detailObject.transform.SetParent(panelObject.transform, false);
+
+        detailText = detailObject.AddComponent<TextMeshProUGUI>();
+        detailText.fontSize = 13;
+        detailText.enableWordWrapping = true;
+        detailText.alignment = TextAlignmentOptions.TopLeft;
+        detailText.raycastTarget = false;
+
+        RectTransform detailRect = detailText.GetComponent<RectTransform>();
+        detailRect.anchorMin = new Vector2(0f, 0f);
+        detailRect.anchorMax = new Vector2(1f, 1f);
+        detailRect.pivot = new Vector2(0f, 1f);
+        detailRect.anchoredPosition = new Vector2(16f, -52f);
+        detailRect.sizeDelta = new Vector2(-32f, -60f);
+    }
+
+    private void SetHudText(string scoreLine, string detailLine, Color accentColor, Color panelColor)
+    {
+        ResolveHud();
+        hudPanel.color = panelColor;
+        scoreText.color = accentColor;
+        scoreText.text = scoreLine;
+        detailText.color = new Color(1f, 1f, 1f, 0.72f);
+        detailText.text = detailLine;
+    }
+
+    private void ShowPlayingText()
+    {
+        SetHudText($"Score {score}", RuleText, new Color(1f, 0.82f, 0.16f, 1f), new Color(0.02f, 0.025f, 0.035f, 0.82f));
+    }
+
+    public Vector3 getPlaerPosition()
+    {
+        return player.transform.position;
+    }
+
+    private void Update()
+    {
+        if (Keyboard.current.yKey.wasReleasedThisFrame && !ongoing)
+        {
+            ResetGame();
+            return;
+        }
+
+        if (!ongoing)
+        {
+            return;
+        }
+
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
-            Debug.Log("空格按下");
-            startTime = Time.time; // 记下当前游戏跑了多少秒
+            startTime = Time.time;
             isCharging = true;
             head_y = head.transform.localPosition.y;
-            Debug.Log("11head_y:"+head_y);
 
-            Vector3 ParticlePos = chargeParticle.transform.position;
-            Vector3 Particleoffset = new Vector3(0.08f, -0.2f, 1f);
-            ParticlePos = player.transform.position+ Particleoffset;
-            chargeParticle.transform.position = ParticlePos;
-            
+            Vector3 particleOffset = new Vector3(0.08f, -0.2f, 1f);
+            chargeParticle.transform.position = player.transform.position + particleOffset;
+
             var mainModule = chargeParticle.main;
             mainModule.startColor = Random.ColorHSV();
             emissionLoop.rateOverTime = 5;
@@ -79,85 +170,71 @@ public class PlayerMoveControl : MonoBehaviour
             chargeParticle.Play();
         }
 
-        // 新版检测“持续按住”
         if (Keyboard.current.spaceKey.isPressed)
         {
-            // 蓄力中...
             float chargePercent = (Time.time - startTime) / maxChargeTime;
             chargePercent = Mathf.Clamp01(chargePercent);
 
-            // 关键：将值传给 Shader
             Vector3 currentPos = head.transform.localPosition;
-            float targetY = head_y - (head_y * chargePercent * 0.1f);
-            // 3. 赋值回去
-            currentPos.y = targetY;
+            currentPos.y = head_y - head_y * chargePercent * 0.1f;
             head.transform.localPosition = currentPos;
             playerMaterial.SetFloat("_ChargeAmount", chargePercent);
         }
 
-        // 新版检测“松开”瞬间
         if (Keyboard.current.spaceKey.wasReleasedThisFrame)
         {
-            Debug.Log("空格松开");
             if (!isCharging)
             {
                 return;
             }
-            
+
             chargeTime = Time.time - startTime;
             isCharging = false;
             playerMaterial.SetFloat("_ChargeAmount", 0);
+
             Vector3 currentPos = head.transform.localPosition;
-            Debug.Log("head_y:"+head_y);
             currentPos.y = head_y;
             head.transform.localPosition = currentPos;
-             // 或者直接停止产生新粒子，允许现有粒子自然消失
+
             emissionLoop.rateOverTime = 0;
             emissionLoop.enabled = false;
             chargeParticle.Stop();
 
-            // 触发翻转动作
             StartFlip();
         }
     }
-    // 这是一个中转站，用来开启协程
+
     public void StartFlip()
     {
-        // 开启协程，并传入你希望它转多久
         StartCoroutine(RotateOverTime(flipDuration));
         StartCoroutine(CheckResultRoutine(flipDuration));
     }
 
-
-    // 真正的旋转逻辑，在后台异步运行
-    IEnumerator RotateOverTime(float duration)
+    private IEnumerator RotateOverTime(float duration)
     {
         Vector3 startPos = player.transform.position;
         float jumpDistance = chargeTime * jumpSpeed;
         Vector3 newpos = boxSpawner.getCurBoxPos();
         Vector3 spawnDir = player.transform.forward;
+
         if (!boxSpawner.isFowardFunc())
         {
-            Debug.Log("not FowardFunc");
             spawnDir = -player.transform.right;
         }
+
         if (score > 0)
         {
-            spawnDir = (new Vector3(newpos.x,player.transform.position.y,newpos.z) - player.transform.position).normalized;
+            spawnDir = (new Vector3(newpos.x, player.transform.position.y, newpos.z) - player.transform.position).normalized;
         }
-        
-        Vector3 endPos = startPos + spawnDir* jumpDistance; // 向前移动
 
+        Vector3 endPos = startPos + spawnDir * jumpDistance;
         Quaternion startRotation = player.transform.rotation;
-        // 目标是当前角度基础上绕X轴转180
         Quaternion middleRotation = startRotation * Quaternion.Euler(180, 0, 0);
         Quaternion endRotation = startRotation * Quaternion.Euler(360, 0, 0);
         float elapsed = 0f;
 
         while (elapsed < duration)
         {
-            // 随着时间推移，平滑改变角度
-            // Debug.Log("RotateOverTime");
             float t = elapsed / duration;
 
             if (elapsed < duration / 2)
@@ -170,52 +247,43 @@ public class PlayerMoveControl : MonoBehaviour
                 float ratio = (elapsed - duration / 2f) / (duration / 2f);
                 player.transform.rotation = Quaternion.Lerp(middleRotation, endRotation, ratio);
             }
+
             Vector3 currentPos = Vector3.Lerp(startPos, endPos, t);
-            // 加上 Y 轴的高度曲线（让它看起来像在“跳”）
             currentPos.y += Mathf.Sin(t * Mathf.PI) * 6.0f;
             player.transform.position = currentPos;
 
             elapsed += Time.deltaTime;
-            // Debug.Log("elapsed: " + elapsed);
-            yield return null; // 告诉 Unity：这一帧我转够了，下一帧再继续
+            yield return null;
         }
+
         player.transform.position = endPos;
-        player.transform.rotation = endRotation; // 确保最后角度绝对精准
-        Debug.Log("Rotate end");
+        player.transform.rotation = endRotation;
     }
-    IEnumerator CheckResultRoutine(float duration)
+
+    private IEnumerator CheckResultRoutine(float duration)
     {
-        // 1. 等待跳跃动作完成（比如 0.8 秒）
         yield return new WaitForSeconds(duration);
 
-        // 2. 等待物理引擎静止（或者检测速度是否接近 0）
         Rigidbody rb = player.GetComponent<Rigidbody>();
         yield return new WaitUntil(() => rb.linearVelocity.magnitude < 0.1f);
     }
-    public void updateResult(int val,Vector3 pos)
+
+    public void updateResult(int val, Vector3 pos)
     {
         if (val == 2)
         {
             Rigidbody rb = player.GetComponent<Rigidbody>();
             rb.isKinematic = true;
-            // rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ| RigidbodyConstraints.FreezeRotationY;
-        
-            Debug.Log("wing");
-            scoreText.color = new Color(0f, 0.8f, 0f, 1f);
-            scoreText.text = "you success";
             player.transform.position = pos;
-            scoreText.text = $"you success!!\n your score is 30 \npress Y restart";
+            SetHudText("Success", $"Final score: {score}\nPress Y to restart.", new Color(0.25f, 1f, 0.45f, 1f), new Color(0.02f, 0.12f, 0.07f, 0.72f));
             ongoing = false;
         }
         else if (val == 1)
         {
-            Debug.Log("ScoreUp");
-            scoreText.color = new Color(1f, 0.8f, 0f, 1f);
             Vector3 newPos = boxSpawner.SpawnNewBox();
             camScript.UpdateTarget(player.transform.position, newPos, boxSpawner.isFowardFunc());
             score++;
-            scoreText.text = $"Score: {score}";
-            // player.transform.position = pos;
+            ShowPlayingText();
         }
         else if (val == 0)
         {
@@ -224,20 +292,14 @@ public class PlayerMoveControl : MonoBehaviour
             {
                 maxScore = score;
             }
-            // player.transform.position = pos;
-            scoreText.color = new Color(0.8f, 0f, 0f, 1f);
-            scoreText.text = $"GameOver!!\n your score is {maxScore} \npress Y restart";
-            Debug.Log("GameOver");
-        }
-    }
-   
 
-        public void ResetGame()
-        {
-            // 获取当前活动的场景名称并重新加载它
-            string currentSceneName = SceneManager.GetActiveScene().name;
-            SceneManager.LoadScene(currentSceneName);
-            
+            SetHudText("Game Over", $"Score: {score}\nBest: {maxScore}\nPress Y to restart.", new Color(1f, 0.22f, 0.14f, 1f), new Color(0.18f, 0.035f, 0.035f, 0.74f));
         }
-    
     }
+
+    public void ResetGame()
+    {
+        string currentSceneName = SceneManager.GetActiveScene().name;
+        SceneManager.LoadScene(currentSceneName);
+    }
+}

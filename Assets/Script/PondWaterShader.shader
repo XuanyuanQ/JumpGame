@@ -10,10 +10,10 @@ Shader "Custom/PondWater"
         _WaveAmp ("Wave Amplitude", Float) = 0.1
 
         [Header(Ripple Settings)]
-        _RippleAmplitude ("Ripple Amp", Float) = 0.5
-        _RippleFreq ("Ripple Freq", Float) = 15.0
-        _RippleSpeed ("Ripple Speed", Float) = 8.0
-        _RippleDuration ("Ripple Duration", Float) = 2.0
+        _RippleAmplitude ("Ripple Amp", Float) = 0.32
+        _RippleFreq ("Ripple Freq", Float) = 18.0
+        _RippleSpeed ("Ripple Speed", Float) = 0.08
+        _RippleDuration ("Ripple Duration", Float) = 5.2
         
         // 这两个变量由 C# 更新
         _ImpactPos ("Impact Position", Vector) = (0,0,0,0)
@@ -100,35 +100,31 @@ Shader "Custom/PondWater"
 
             // --- 新增：涟漪计算函数 ---
             // 返回 float2: x = 高度偏移, y = 导数(用于法线)
-            float calculateRipple(float2 uv, float2 centre, float startTime) {
-            
-             uv = (uv - _WaterMin.xz) / (_WaterMax.xz - _WaterMin.xz);
-             centre = saturate((centre - _WaterMin.xz) / (_WaterMax.xz - _WaterMin.xz));
-                if(startTime <=0) return 0;
-                //discard old wave
-                float age = _Time.y -startTime;
-                // return age;
-                if(age>_ImpactTime*1.0) return 0;
-                // age=cos(age);
-                // centre=float2(0.5f,0.5f);
-                float2 offset = uv-centre;
-                float distanceFromCentre = length(offset);
-                
-                //wave radius grows over time
-                float rippleRadius = age * _WaveSpeed;
-                // rippleRadius=_WaveSpeed;
+            float calculateRipple(float2 worldXZ, float4 centreData) {
+                float startTime = centreData.z;
+                if (startTime <= 0.0) return 0.0;
 
-                float wave = 1.0 - abs(distanceFromCentre - rippleRadius)*5.0 ;
-                wave = saturate(wave);
-                // return wave;
-                //distance-based decay
-                float spatialDecay = 1.0 - saturate(distanceFromCentre * _RippleSpeed);
+                float age = _Time.y - startTime;
+                if (age < 0.0 || age > _RippleDuration) return 0.0;
 
-                //applied time to decay
-                float decay = spatialDecay * (1-age/_ImpactTime);
-                
-                
-                return saturate(wave*decay);
+                float2 waterSize = max(_WaterMax.xz - _WaterMin.xz, float2(0.001, 0.001));
+                float maxWaterSize = max(waterSize.x, waterSize.y);
+                float2 uv = saturate((worldXZ - _WaterMin.xz) / waterSize);
+                float2 centre = saturate((centreData.xy - _WaterMin.xz) / waterSize);
+
+                float2 aspectScale = waterSize / maxWaterSize;
+                float dist = length((uv - centre) * aspectScale);
+                float radius = age * _RippleSpeed;
+
+                float phase = (dist - radius) * _RippleFreq * 6.2831853;
+                float ring = sin(phase);
+                float ringWidth = max(0.015, 1.0 / max(_RippleFreq, 1.0));
+                float ringMask = exp(-abs(dist - radius) / ringWidth);
+                float timeFade = saturate(1.0 - age / max(_RippleDuration, 0.001));
+                timeFade *= timeFade;
+
+                float strength = centreData.w <= 0.0 ? 1.0 : centreData.w;
+                return ring * ringMask * timeFade * _RippleAmplitude * strength;
             }
 
             // --- Vertex Shader (顶点着色器) ---
@@ -150,7 +146,7 @@ Shader "Custom/PondWater"
                 UNITY_LOOP
                 for(int n =0; n<10; n++)
                 {
-                combinedWave += calculateRipple(worldPosRaw.xz, _InputCentre[n].xy,_InputCentre[n].z);
+                combinedWave += calculateRipple(worldPosRaw.xz, _InputCentre[n]);
                 // break;
                 }
 
@@ -162,7 +158,7 @@ Shader "Custom/PondWater"
                 o.worldPos = mul(unity_ObjectToWorld, float4(modifiedPos, 1.0)).xyz;
                 float3 worldPos = o.worldPos;
                
-               worldPos.y=worldPos.y+combinedWave*1.0;
+               worldPos.y=worldPos.y+combinedWave;
                 
                 
                 o.vertex = mul(UNITY_MATRIX_VP, float4(worldPos, 1.0));
@@ -268,7 +264,7 @@ Shader "Custom/PondWater"
                 float3 Refractionwave = refract(-V, Nwavem, eta);
                 float4 RefractionColor = texCUBE(_Cubemap, Refractionwave) * (1.0 - fresnel);
                 // return waterColor;
-                float factor= 1.0+i.test;
+                float factor= 1.0 + saturate(abs(i.test) * 3.0) * 0.35;
                 return (waterColor+ReflectionColor+RefractionColor)*(factor);
                 // float debugHeight = i.worldPos.z; // 假设 Z 是高度
                 // return float4(i.test, 0, 0, 1);
